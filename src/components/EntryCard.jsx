@@ -29,13 +29,13 @@ function Tag({ label }) {
 export default function EntryCard({ entry }) {
   const [expanded, setExpanded] = useState(false);
 
-  const analysis = entry.analysis || {};
-  const steps = analysis.steps || [];
-  const tasks = analysis.tasks || [];
-  const tools = analysis.tools_mentioned || [];
-  const concepts = analysis.key_concepts || [];
-  const warnings = analysis.warnings || [];
-  const tags = analysis.tags || [];
+ console.log("[EntryCard] entry:", entry);
+const steps = Array.isArray(entry.steps) ? entry.steps : [];
+const tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
+const tools = Array.isArray(entry.tools_mentioned) ? entry.tools_mentioned : [];
+const concepts = Array.isArray(entry.key_concepts) ? entry.key_concepts : [];
+const warnings = Array.isArray(entry.warnings) ? entry.warnings : [];
+const tags = Array.isArray(entry.tags) ? entry.tags : [];
 
   return (
     <div
