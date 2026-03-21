@@ -108,7 +108,7 @@ export default function Feed() {
       </div>
 
       {/* Cards */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-min">
         {loading && (
           <p className="text-sm text-gray-400 text-center pt-8">Loading...</p>
         )}
