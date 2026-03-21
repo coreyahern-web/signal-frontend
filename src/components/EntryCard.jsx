@@ -92,7 +92,7 @@ const tags = Array.isArray(entry.tags) ? entry.tags : [];
                     </span>
                     <div>
                       <span className="font-semibold text-gray-800">
-                        {step.action}
+                        { typeof step === "string" ? step : step.action}
                       </span>
                       {step.detail && (
                         <span className="text-gray-600"> — {step.detail}</span>
