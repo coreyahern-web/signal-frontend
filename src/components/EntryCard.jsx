@@ -72,7 +72,7 @@ export default function EntryCard({ entry, onArchive }) {
             {entry.title || "Untitled"}
           </h3>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-xs text-gray-400">{entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ""}</span>
+            <span className="text-xs text-gray-400">{entry.created_at ? new Date(entry.created_at).toLocaleDateString() + " " + new Date(entry.created_at).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : ""}</span>
             <PlatformBadge platform={entry.platform} />
             <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
             {onArchive && (
