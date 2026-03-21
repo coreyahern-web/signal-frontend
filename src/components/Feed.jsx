@@ -15,6 +15,7 @@ export default function Feed() {
       const { data, error } = await supabase
         .from("knowledge_entries")
         .select("*")
+        .eq("archived", false)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -38,6 +39,11 @@ export default function Feed() {
     activeTopic === "All"
       ? entries
       : entries.filter((e) => e.suggested_topic === activeTopic);
+
+  async function archive(id) {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    await supabase.from("knowledge_entries").update({ archived: true }).eq("id", id);
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -70,7 +76,7 @@ export default function Feed() {
           <p className="text-sm text-gray-400 text-center pt-8">No entries yet.</p>
         )}
         {filtered.map((entry) => (
-          <EntryCard key={entry.id} entry={entry} />
+          <EntryCard key={entry.id} entry={entry} onArchive={archive} />
         ))}
       </div>
     </div>

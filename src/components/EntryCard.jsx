@@ -49,7 +49,7 @@ function safeStr(val) {
   return String(val);
 }
 
-export default function EntryCard({ entry }) {
+export default function EntryCard({ entry, onArchive }) {
   const [expanded, setExpanded] = useState(false);
 
   const steps = Array.isArray(entry.steps) ? entry.steps : [];
@@ -74,6 +74,13 @@ export default function EntryCard({ entry }) {
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <PlatformBadge platform={entry.platform} />
             <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
+            {onArchive && (
+              <button
+                className="text-gray-300 hover:text-red-400 text-xs ml-1 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onArchive(entry.id); }}
+                title="Archive"
+              >✕</button>
+            )}
           </div>
         </div>
 
