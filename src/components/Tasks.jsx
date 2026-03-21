@@ -16,7 +16,7 @@ export default function Tasks() {
     // Fetch all entries with tasks
     const { data: entries, error: entriesError } = await supabase
       .from("knowledge_entries")
-      .select("id, title, analysis")
+      .select("id, title, tasks")
       .order("created_at", { ascending: false });
 
     if (entriesError) {
@@ -38,7 +38,7 @@ export default function Tasks() {
     // Flatten tasks
     const flat = [];
     (entries || []).forEach((entry) => {
-      const tasks = entry.analysis?.tasks || [];
+      const tasks = entry.tasks || [];
       tasks.forEach((task, index) => {
         const key = `${entry.id}:${index}`;
         flat.push({
