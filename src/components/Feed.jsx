@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import EntryCard from "./EntryCard";
 
-const BRANDS = ["Estimate PM", "Cashflow Panda", "Connect Construction", "Cold Holdings"];
-
 export default function Feed() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +68,7 @@ export default function Feed() {
           <p className="text-sm text-gray-400 text-center pt-8">No entries.</p>
         )}
         {filtered.map((entry) => (
-          <EntryCard key={entry.id} entry={entry} onArchive={archive} />
+          <EntryCard key={entry.id} entry={entry} />
         ))}
       </div>
     </div>
