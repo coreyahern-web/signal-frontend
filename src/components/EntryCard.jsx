@@ -262,7 +262,7 @@ function DetailDrawer({ entry, onClose }) {
   );
 }
 
-export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, selected, onSelect }) {
+export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, selected, onSelect, wasCopied, onMarkCopied }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [copied, setCopied] = useState(null);
 
@@ -272,6 +272,7 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, sel
     e.stopPropagation();
     if (type === "plain") copyPlain(entry);
     else copyForClaude(entry);
+    if (onMarkCopied) onMarkCopied(entry.id);
     setCopied(type);
     setTimeout(() => setCopied(null), 1500);
   }
@@ -322,6 +323,11 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, sel
             </h3>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
+            {wasCopied && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                Copied
+              </span>
+            )}
             {entry.relevancy_score != null && (
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${relevancyColor(entry.relevancy_score)}`}>
                 {entry.relevancy_score}

@@ -18,6 +18,7 @@ export default function Feed() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
   const [batchCopied, setBatchCopied] = useState(false);
+  const [copiedIds, setCopiedIds] = useState(new Set());
 
   useEffect(() => {
     async function load() {
@@ -102,8 +103,17 @@ export default function Feed() {
     const selectedEntries = result.filter((e) => selected.has(e.id));
     const blocks = selectedEntries.map((e, i) => buildClaudeBlock(e, i));
     navigator.clipboard.writeText(blocks.join("\n\n"));
+    setCopiedIds((prev) => {
+      const next = new Set(prev);
+      selectedEntries.forEach((e) => next.add(e.id));
+      return next;
+    });
     setBatchCopied(true);
     setTimeout(() => setBatchCopied(false), 1500);
+  }
+
+  function markCopied(id) {
+    setCopiedIds((prev) => new Set(prev).add(id));
   }
 
   const isArchivedView = filter === "archived";
@@ -172,6 +182,8 @@ export default function Feed() {
               onDelete={handleDelete}
               selected={selected.has(entry.id)}
               onSelect={toggleSelect}
+              wasCopied={copiedIds.has(entry.id)}
+              onMarkCopied={markCopied}
             />
           ))}
         </div>
