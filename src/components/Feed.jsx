@@ -11,9 +11,11 @@ export default function Feed() {
   useEffect(() => {
     async function load() {
       setLoading(true);
+      const isArchived = filter === "archived";
       const { data, error } = await supabase
         .from("knowledge_entries")
         .select("*")
+        .eq("archived", isArchived)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -24,16 +26,33 @@ export default function Feed() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [filter]);
 
   const filtered =
-    filter === "all"
+    filter === "all" || filter === "archived"
       ? entries
       : filter === "recommended"
         ? entries.filter((e) => e.recommend === "yes")
         : filter === "high-relevancy"
           ? entries.filter((e) => Number(e.relevancy_score) >= 7)
           : entries;
+
+  async function handleArchive(id) {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    await supabase.from("knowledge_entries").update({ archived: true }).eq("id", id);
+  }
+
+  async function handleUnarchive(id) {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    await supabase.from("knowledge_entries").update({ archived: false }).eq("id", id);
+  }
+
+  async function handleDelete(id) {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    await supabase.from("knowledge_entries").delete().eq("id", id);
+  }
+
+  const isArchivedView = filter === "archived";
 
   return (
     <div className="flex flex-col h-full">
@@ -42,6 +61,7 @@ export default function Feed() {
           { key: "all", label: "All" },
           { key: "recommended", label: "Recommended" },
           { key: "high-relevancy", label: "High relevancy" },
+          { key: "archived", label: "Archived" },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -57,7 +77,7 @@ export default function Feed() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-20 md:pb-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 md:pb-4">
         {loading && (
           <p className="text-sm text-gray-400 text-center pt-8">Loading...</p>
         )}
@@ -67,9 +87,17 @@ export default function Feed() {
         {!loading && !error && filtered.length === 0 && (
           <p className="text-sm text-gray-400 text-center pt-8">No entries.</p>
         )}
-        {filtered.map((entry) => (
-          <EntryCard key={entry.id} entry={entry} />
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {filtered.map((entry) => (
+            <EntryCard
+              key={entry.id}
+              entry={entry}
+              onArchive={isArchivedView ? null : handleArchive}
+              onUnarchive={isArchivedView ? handleUnarchive : null}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

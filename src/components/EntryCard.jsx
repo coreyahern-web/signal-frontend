@@ -258,7 +258,7 @@ function DetailDrawer({ entry, onClose }) {
   );
 }
 
-export default function EntryCard({ entry }) {
+export default function EntryCard({ entry, onArchive, onUnarchive, onDelete }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [copied, setCopied] = useState(null);
 
@@ -270,6 +270,22 @@ export default function EntryCard({ entry }) {
     else copyForClaude(entry);
     setCopied(type);
     setTimeout(() => setCopied(null), 1500);
+  }
+
+  function handleArchive(e) {
+    e.stopPropagation();
+    if (onArchive) onArchive(entry.id);
+  }
+
+  function handleUnarchive(e) {
+    e.stopPropagation();
+    if (onUnarchive) onUnarchive(entry.id);
+  }
+
+  function handleDelete(e) {
+    e.stopPropagation();
+    if (!window.confirm("Delete this card permanently?")) return;
+    if (onDelete) onDelete(entry.id);
   }
 
   return (
@@ -319,6 +335,28 @@ export default function EntryCard({ entry }) {
               className="text-xs text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors"
             >
               {copied === "claude" ? "Copied" : "Copy for Claude"}
+            </button>
+            {onArchive && (
+              <button
+                onClick={handleArchive}
+                className="text-xs text-gray-500 hover:text-amber-700 bg-gray-100 hover:bg-amber-50 px-2.5 py-1 rounded-lg transition-colors"
+              >
+                Archive
+              </button>
+            )}
+            {onUnarchive && (
+              <button
+                onClick={handleUnarchive}
+                className="text-xs text-gray-500 hover:text-emerald-700 bg-gray-100 hover:bg-emerald-50 px-2.5 py-1 rounded-lg transition-colors"
+              >
+                Unarchive
+              </button>
+            )}
+            <button
+              onClick={handleDelete}
+              className="text-xs text-gray-500 hover:text-red-700 bg-gray-100 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors"
+            >
+              Delete
             </button>
           </div>
         </div>
