@@ -9,226 +9,324 @@ const platformColors = {
   default: "bg-gray-100 text-gray-700",
 };
 
-const difficultyColors = {
-  beginner: "bg-emerald-50 text-emerald-700",
-  intermediate: "bg-amber-50 text-amber-700",
-  advanced: "bg-red-50 text-red-700",
-};
+function relevancyColor(score) {
+  const n = Number(score) || 0;
+  if (n >= 8) return "bg-emerald-100 text-emerald-700";
+  if (n >= 5) return "bg-yellow-100 text-yellow-700";
+  return "bg-red-100 text-red-700";
+}
 
-const contentTypeColors = {
-  tutorial: "bg-blue-50 text-blue-700",
-  opinion: "bg-purple-50 text-purple-700",
-  "case-study": "bg-cyan-50 text-cyan-700",
-  "product-demo": "bg-orange-50 text-orange-700",
-  strategy: "bg-indigo-50 text-indigo-700",
-};
+function recommendColor(val) {
+  if (val === "yes") return "bg-emerald-100 text-emerald-700";
+  if (val === "partially") return "bg-yellow-100 text-yellow-700";
+  return "bg-red-100 text-red-700";
+}
 
-function PlatformBadge({ platform }) {
-  const colorClass = platformColors[platform?.toLowerCase()] || platformColors.default;
+function copyPlain(entry) {
+  const text = (entry.title || "Untitled") + "\n" + (entry.summary || "");
+  navigator.clipboard.writeText(text);
+}
+
+function copyForClaude(entry) {
+  const lines = [
+    "[VIDEO BREAKDOWN CARD]",
+    "Title: " + (entry.title || ""),
+    "Summary: " + (entry.summary || ""),
+    "Verdict: " + (entry.verdict || ""),
+    "What works: " + formatList(entry.what_works),
+    "What doesn't: " + formatList(entry.what_doesnt),
+    "Next step: " + (entry.next_step || ""),
+    "Recommend: " + (entry.recommend || ""),
+    "Relevancy: " + (entry.relevancy_score || 0) + "/10 | Confidence: " + (entry.confidence || ""),
+    "Already doing: " + (entry.already_doing || ""),
+  ];
+  navigator.clipboard.writeText(lines.join("\n"));
+}
+
+function formatList(val) {
+  if (Array.isArray(val)) return val.join("; ");
+  if (typeof val === "string" && val) {
+    try { const arr = JSON.parse(val); if (Array.isArray(arr)) return arr.join("; "); } catch {}
+    return val;
+  }
+  return "";
+}
+
+function parseArray(val) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string" && val) {
+    try { const arr = JSON.parse(val); if (Array.isArray(arr)) return arr; } catch {}
+    if (val.trim()) return [val];
+  }
+  return [];
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function Section({ label, children }) {
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colorClass}`}>
-      {platform || "unknown"}
-    </span>
+    <div className="py-3">
+      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+        {label}
+      </h4>
+      {children}
+    </div>
   );
 }
 
-function Badge({ label, colorClass }) {
+function DetailDrawer({ entry, onClose }) {
+  const whatWorks = parseArray(entry.what_works);
+  const whatDoesnt = parseArray(entry.what_doesnt);
+  const prerequisites = parseArray(entry.prerequisites);
+  const warnings = parseArray(entry.warnings);
+  const tools = parseArray(entry.tools);
+  const brandRelevance = parseArray(entry.brand_relevance);
+
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colorClass}`}>
-      {label}
-    </span>
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div
+        className="relative w-full max-w-lg bg-white h-full overflow-y-auto shadow-xl animate-slide-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-start justify-between gap-3 z-10">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold text-gray-900 leading-snug">
+              {entry.title || "Untitled"}
+            </h2>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              {entry.recommend && (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${recommendColor(entry.recommend)}`}>
+                  {entry.recommend}
+                </span>
+              )}
+              {entry.relevancy_score != null && (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${relevancyColor(entry.relevancy_score)}`}>
+                  {entry.relevancy_score}/10
+                </span>
+              )}
+              {entry.confidence && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                  {entry.confidence} confidence
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-lg leading-none p-1"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="px-5 pb-8 divide-y divide-gray-100">
+          <Section label="Summary">
+            <p className="text-sm text-gray-700 leading-relaxed">{entry.summary}</p>
+          </Section>
+
+          {entry.verdict && (
+            <Section label="Verdict">
+              <p className="text-sm text-gray-700">{entry.verdict}</p>
+            </Section>
+          )}
+
+          {(whatWorks.length > 0 || whatDoesnt.length > 0) && (
+            <div className="py-3 grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-1.5">
+                  What works
+                </h4>
+                <ul className="space-y-1">
+                  {whatWorks.map((w, i) => (
+                    <li key={i} className="text-sm text-gray-700">- {w}</li>
+                  ))}
+                  {whatWorks.length === 0 && <li className="text-sm text-gray-400">-</li>}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-1.5">
+                  What doesn't
+                </h4>
+                <ul className="space-y-1">
+                  {whatDoesnt.map((w, i) => (
+                    <li key={i} className="text-sm text-gray-700">- {w}</li>
+                  ))}
+                  {whatDoesnt.length === 0 && <li className="text-sm text-gray-400">-</li>}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {entry.who_it_works_for && (
+            <Section label="Who it works for">
+              <p className="text-sm text-gray-700">{entry.who_it_works_for}</p>
+            </Section>
+          )}
+
+          {prerequisites.length > 0 && (
+            <Section label="Prerequisites">
+              <ul className="space-y-1">
+                {prerequisites.map((p, i) => (
+                  <li key={i} className="text-sm text-gray-700">- {p}</li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          {entry.next_step && (
+            <Section label="Next step">
+              <div className="bg-blue-50 rounded-lg px-3 py-2">
+                <p className="text-sm font-medium text-blue-900">{entry.next_step}</p>
+              </div>
+            </Section>
+          )}
+
+          {entry.already_doing && (
+            <Section label="Already doing">
+              <p className="text-sm text-gray-700">{entry.already_doing}</p>
+            </Section>
+          )}
+
+          {warnings.length > 0 && (
+            <Section label="Warnings">
+              <ul className="space-y-1">
+                {warnings.map((w, i) => (
+                  <li key={i} className="text-sm text-red-700 bg-red-50 rounded px-2 py-1">{w}</li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          {tools.length > 0 && (
+            <Section label="Tools">
+              <div className="flex flex-wrap gap-1.5">
+                {tools.map((t, i) => (
+                  <span key={i} className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">{t}</span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {brandRelevance.length > 0 && (
+            <Section label="Brand relevance">
+              <div className="flex flex-wrap gap-1.5">
+                {brandRelevance.map((b, i) => (
+                  <span key={i} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium">{b}</span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          <div className="py-3 flex items-center gap-3 flex-wrap">
+            {entry.difficulty && (
+              <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+                {entry.difficulty}
+              </span>
+            )}
+            {entry.time_to_implement && (
+              <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">
+                {entry.time_to_implement}
+              </span>
+            )}
+            {entry.content_type && (
+              <span className="text-xs bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full">
+                {entry.content_type}
+              </span>
+            )}
+          </div>
+
+          {entry.url && (
+            <div className="py-3">
+              <a
+                href={entry.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:text-blue-800 underline underline-offset-2"
+              >
+                View original &rarr;
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
-function safeStr(val) {
-  if (val === null || val === undefined) return "";
-  if (typeof val === "string") return val;
-  if (typeof val === "number") return String(val);
-  if (Array.isArray(val)) return val.map(safeStr).join(", ");
-  if (typeof val === "object") return Object.values(val).map(safeStr).join(" ");
-  return String(val);
-}
+export default function EntryCard({ entry }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [copied, setCopied] = useState(null);
 
-  // Debug: log full entry object to verify Supabase column names
-  console.log("[EntryCard] entry:", JSON.stringify(entry, null, 2));
+  const platformClass = platformColors[entry.platform?.toLowerCase()] || platformColors.default;
 
-  // Fields are flat columns on knowledge_entries, not nested under analysis
-  const steps = Array.isArray(entry.steps) ? entry.steps : [];
-  const tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
-  const tools = Array.isArray(entry.tools_mentioned) ? entry.tools_mentioned : [];
-  const concepts = Array.isArray(entry.key_concepts) ? entry.key_concepts : [];
-  const warnings = Array.isArray(entry.warnings) ? entry.warnings : [];
-  const tags = Array.isArray(entry.tags) ? entry.tags : [];
+  function handleCopy(type, e) {
+    e.stopPropagation();
+    if (type === "plain") copyPlain(entry);
+    else copyForClaude(entry);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 1500);
+  }
 
   return (
-    <div
-      className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden cursor-pointer hover:border-gray-300 transition-colors"
-      onClick={() => setExpanded((v) => !v)}
-    >
-      <div className="p-4">
-        {/* Title + platform */}
+    <>
+      <div
+        className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden cursor-pointer hover:border-gray-300 transition-colors p-4"
+        onClick={() => setDrawerOpen(true)}
+      >
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="text-sm font-semibold text-gray-900 leading-snug flex-1">
             {entry.title || "Untitled"}
           </h3>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-xs text-gray-400">{entry.created_at ? new Date(entry.created_at).toLocaleDateString() + " " + new Date(entry.created_at).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : ""}</span>
-            <PlatformBadge platform={entry.platform} />
-            <span className="text-gray-400 text-xs">{expanded ? "▲" : "▼"}</span>
-            {onArchive && (
-              <button
-                className="text-gray-300 hover:text-red-400 text-xs ml-1 transition-colors"
-                onClick={(e) => { e.stopPropagation(); onArchive(entry.id); }}
-                title="Archive"
-              >✕</button>
+            {entry.relevancy_score != null && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${relevancyColor(entry.relevancy_score)}`}>
+                {entry.relevancy_score}
+              </span>
+            )}
+            {entry.recommend && (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${recommendColor(entry.recommend)}`}>
+                {entry.recommend}
+              </span>
             )}
           </div>
         </div>
 
-        {/* Metadata badges */}
-        <div className="flex gap-1.5 flex-wrap mb-2">
-          {entry.suggested_topic && (
-            <Badge label={entry.suggested_topic} colorClass="bg-blue-50 text-blue-700" />
-          )}
-          {entry.suggested_subtopic && (
-            <Badge label={entry.suggested_subtopic} colorClass="bg-indigo-50 text-indigo-600" />
-          )}
-          {entry.difficulty && (
-            <Badge
-              label={entry.difficulty}
-              colorClass={difficultyColors[entry.difficulty] || "bg-gray-100 text-gray-600"}
-            />
-          )}
-          {entry.content_type && (
-            <Badge
-              label={entry.content_type}
-              colorClass={contentTypeColors[entry.content_type] || "bg-gray-100 text-gray-600"}
-            />
-          )}
-          {entry.time_to_implement && (
-            <Badge label={`⏱ ${entry.time_to_implement}`} colorClass="bg-gray-100 text-gray-600" />
-          )}
-        </div>
-
-        {/* Brand relevance */}
-        {brandRelevance.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap mb-2">
-            {brandRelevance.map((brand, i) => (
-              <Badge key={i} label={brand} colorClass="bg-orange-50 text-orange-700" />
-            ))}
-          </div>
-        )}
-
-        {/* Summary */}
-        <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+        <p className="text-sm text-gray-600 leading-relaxed line-clamp-1 mb-3">
           {entry.summary}
         </p>
 
-        {/* Key Takeaway — always visible */}
-        {entry.one_thing_to_steal && (
-          <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-            <span className="text-xs font-semibold text-yellow-800 uppercase tracking-wide">Key Takeaway </span>
-            <span className="text-xs text-yellow-900">{entry.one_thing_to_steal}</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${platformClass}`}>
+              {entry.platform || "unknown"}
+            </span>
+            <span className="text-xs text-gray-400">{formatDate(entry.created_at)}</span>
           </div>
-        )}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={(e) => handleCopy("plain", e)}
+              className="text-xs text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors"
+            >
+              {copied === "plain" ? "Copied" : "Copy"}
+            </button>
+            <button
+              onClick={(e) => handleCopy("claude", e)}
+              className="text-xs text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors"
+            >
+              {copied === "claude" ? "Copied" : "Copy for Claude"}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Expanded content */}
-      {expanded && (
-        <div
-          className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {steps.length > 0 && (
-            <section>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Steps</h4>
-              <ol className="space-y-2">
-                {steps.map((step, i) => (
-                  <li key={i} className="flex gap-2 text-sm">
-                    <span className="font-bold text-gray-400 flex-shrink-0 w-5">{i + 1}.</span>
-                    <span className="text-gray-800">{safeStr(step)}</span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-
-          {tasks.length > 0 && (
-            <section>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tasks</h4>
-              <ul className="space-y-1">
-                {tasks.map((task, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-gray-700">
-                    <span className="text-gray-400 flex-shrink-0">•</span>
-                    {safeStr(task)}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {concepts.length > 0 && (
-            <section>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Key Concepts</h4>
-              <ul className="space-y-1">
-                {concepts.map((c, i) => (
-                  <li key={i} className="text-sm text-gray-700">{safeStr(c)}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {warnings.length > 0 && (
-            <section>
-              <h4 className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-2">Warnings</h4>
-              <ul className="space-y-1">
-                {warnings.map((w, i) => (
-                  <li key={i} className="text-sm text-red-700 bg-red-50 rounded px-2 py-1">{safeStr(w)}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {tools.length > 0 && (
-            <section>
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tools</h4>
-              <div className="flex flex-wrap gap-1.5">
-                {tools.map((t, i) => (
-                  <span key={i} className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">
-                    {safeStr(t)}
-                  </span>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Copy buttons */}
-          <div className="flex gap-2 border-t border-gray-100 pt-3">
-            <button
-              onClick={() => handleCopy(false)}
-              className="text-xs font-medium px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-            >
-              {copied === "copy" ? "✓ Copied" : "Copy"}
-            </button>
-            <button
-              onClick={() => handleCopy(true)}
-              className="text-xs font-medium px-3 py-1.5 rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
-            >
-              {copied === "brief" ? "✓ Copied" : "Copy + Brief"}
-            </button>
-          </div>
-
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {tags.map((tag, i) => (
-                <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                  {safeStr(tag)}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+      {drawerOpen && (
+        <DetailDrawer entry={entry} onClose={() => setDrawerOpen(false)} />
       )}
-    </div>
+    </>
   );
 }
