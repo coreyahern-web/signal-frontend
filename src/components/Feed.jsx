@@ -40,8 +40,14 @@ export default function Feed() {
   const [copiedIds, setCopiedIds] = useState(new Set());
   const [statusFilter, setStatusFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   useEffect(() => {
+    if (filter === "summary") {
+      loadSummary();
+      return;
+    }
     async function load() {
       setLoading(true);
       const isArchived = filter === "archived";
@@ -60,6 +66,34 @@ export default function Feed() {
     }
     load();
   }, [filter]);
+
+  async function loadSummary() {
+    setSummaryLoading(true);
+    const [activeRes, archivedRes, actRes] = await Promise.all([
+      supabase.from("knowledge_entries").select("upgrade_status", { count: "exact", head: true }).eq("archived", false),
+      supabase.from("knowledge_entries").select("id", { count: "exact", head: true }).eq("archived", true),
+      supabase.from("knowledge_entries").select("id, title, upgrade_type, brief_ref").eq("upgrade_status", "act").eq("archived", false).order("created_at", { ascending: false }),
+    ]);
+    // Count by status from active entries
+    const countRes = await Promise.all([
+      supabase.from("knowledge_entries").select("id", { count: "exact", head: true }).eq("archived", false).is("upgrade_status", null),
+      supabase.from("knowledge_entries").select("id", { count: "exact", head: true }).eq("archived", false).eq("upgrade_status", "act"),
+      supabase.from("knowledge_entries").select("id", { count: "exact", head: true }).eq("archived", false).eq("upgrade_status", "queue"),
+      supabase.from("knowledge_entries").select("id", { count: "exact", head: true }).eq("archived", false).eq("upgrade_status", "save"),
+      supabase.from("knowledge_entries").select("id", { count: "exact", head: true }).eq("archived", false).eq("upgrade_status", "discard"),
+    ]);
+    setSummary({
+      total: activeRes.count || 0,
+      archived: archivedRes.count || 0,
+      unreviewed: countRes[0].count || 0,
+      act: countRes[1].count || 0,
+      queue: countRes[2].count || 0,
+      save: countRes[3].count || 0,
+      discard: countRes[4].count || 0,
+      actItems: actRes.data || [],
+    });
+    setSummaryLoading(false);
+  }
 
   // Filter by tab
   let result =
@@ -165,6 +199,7 @@ export default function Feed() {
           { key: "recommended", label: "Recommended" },
           { key: "high-relevancy", label: "High relevancy" },
           { key: "archived", label: "Archived" },
+          { key: "summary", label: "Summary" },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -180,71 +215,142 @@ export default function Feed() {
         ))}
       </div>
 
-      {/* Search + sort + upgrade filters */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 flex-shrink-0 flex-wrap">
-        <input
-          type="text"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-[120px] text-sm px-3 py-1.5 rounded-lg bg-gray-100 border-0 outline-none focus:ring-2 focus:ring-gray-900 placeholder-gray-400"
-        />
-        <select
-          value={statusFilter || ""}
-          onChange={(e) => setStatusFilter(e.target.value || null)}
-          className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 border-0 outline-none cursor-pointer"
-        >
-          {STATUS_OPTIONS.map((o) => (
-            <option key={o.key || "all"} value={o.key || ""}>{o.label}</option>
-          ))}
-        </select>
-        <select
-          value={typeFilter || ""}
-          onChange={(e) => setTypeFilter(e.target.value || null)}
-          className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 border-0 outline-none cursor-pointer"
-        >
-          {TYPE_OPTIONS.map((o) => (
-            <option key={o.key || "all"} value={o.key || ""}>{o.label}</option>
-          ))}
-        </select>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 border-0 outline-none cursor-pointer"
-        >
-          <option value="newest">Newest first</option>
-          <option value="relevancy">Highest relevancy</option>
-          <option value="recommended">Recommended first</option>
-        </select>
-      </div>
-
-      <div className={`flex-1 overflow-y-auto px-4 py-4 ${selected.size > 0 ? "pb-24" : "pb-20"} md:pb-4`}>
-        {loading && (
-          <p className="text-sm text-gray-400 text-center pt-8">Loading...</p>
-        )}
-        {error && (
-          <p className="text-sm text-red-500 text-center pt-8">{error}</p>
-        )}
-        {!loading && !error && result.length === 0 && (
-          <p className="text-sm text-gray-400 text-center pt-8">No entries.</p>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {result.map((entry) => (
-            <EntryCard
-              key={entry.id}
-              entry={entry}
-              onArchive={isArchivedView ? null : handleArchive}
-              onUnarchive={isArchivedView ? handleUnarchive : null}
-              onDelete={handleDelete}
-              selected={selected.has(entry.id)}
-              onSelect={toggleSelect}
-              wasCopied={copiedIds.has(entry.id)}
-              onMarkCopied={markCopied}
-              onUpdateEntry={handleUpdateEntry}
-            />
-          ))}
+      {/* Search + sort + upgrade filters (hidden on summary tab) */}
+      {filter !== "summary" && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 flex-shrink-0 flex-wrap">
+          <input
+            type="text"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 min-w-[120px] text-sm px-3 py-1.5 rounded-lg bg-gray-100 border-0 outline-none focus:ring-2 focus:ring-gray-900 placeholder-gray-400"
+          />
+          <select
+            value={statusFilter || ""}
+            onChange={(e) => setStatusFilter(e.target.value || null)}
+            className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 border-0 outline-none cursor-pointer"
+          >
+            {STATUS_OPTIONS.map((o) => (
+              <option key={o.key || "all"} value={o.key || ""}>{o.label}</option>
+            ))}
+          </select>
+          <select
+            value={typeFilter || ""}
+            onChange={(e) => setTypeFilter(e.target.value || null)}
+            className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 border-0 outline-none cursor-pointer"
+          >
+            {TYPE_OPTIONS.map((o) => (
+              <option key={o.key || "all"} value={o.key || ""}>{o.label}</option>
+            ))}
+          </select>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 border-0 outline-none cursor-pointer"
+          >
+            <option value="newest">Newest first</option>
+            <option value="relevancy">Highest relevancy</option>
+            <option value="recommended">Recommended first</option>
+          </select>
         </div>
-      </div>
+      )}
+
+      {/* Summary view */}
+      {filter === "summary" && (
+        <div className="flex-1 overflow-y-auto px-4 py-6 pb-20 md:pb-4">
+          {summaryLoading && (
+            <p className="text-sm text-gray-400 text-center pt-8">Loading summary...</p>
+          )}
+          {summary && !summaryLoading && (
+            <div className="max-w-lg mx-auto space-y-6">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-2xl font-bold text-gray-900">{summary.total}</p>
+                  <p className="text-xs text-gray-500 mt-1">Active cards</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-2xl font-bold text-gray-400">{summary.archived}</p>
+                  <p className="text-xs text-gray-500 mt-1">Archived</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">By status</h3>
+                {[
+                  { label: "Unreviewed", count: summary.unreviewed, color: "bg-gray-100 text-gray-600" },
+                  { label: "Act", count: summary.act, color: "bg-blue-100 text-blue-700" },
+                  { label: "Queue", count: summary.queue, color: "bg-violet-100 text-violet-700" },
+                  { label: "Save", count: summary.save, color: "bg-amber-100 text-amber-700" },
+                  { label: "Discard", count: summary.discard, color: "bg-gray-200 text-gray-500" },
+                ].map((row) => (
+                  <div key={row.label} className="flex items-center justify-between">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${row.color}`}>{row.label}</span>
+                    <span className="text-sm font-semibold text-gray-900">{row.count}</span>
+                  </div>
+                ))}
+              </div>
+
+              {summary.actItems.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Act items</h3>
+                  {summary.actItems.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 leading-snug">{item.title}</p>
+                        {item.brief_ref && (
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">
+                            {item.brief_ref.startsWith("http") ? (
+                              <a href={item.brief_ref} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">{item.brief_ref}</a>
+                            ) : item.brief_ref}
+                          </p>
+                        )}
+                      </div>
+                      {item.upgrade_type && (
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                          { build: "bg-blue-50 text-blue-600", configure: "bg-cyan-50 text-cyan-600", ops: "bg-gray-100 text-gray-600", marketing: "bg-pink-50 text-pink-600", strategy: "bg-indigo-50 text-indigo-600", vendor: "bg-orange-50 text-orange-600" }[item.upgrade_type] || "bg-gray-100 text-gray-600"
+                        }`}>
+                          {item.upgrade_type}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Card grid (hidden on summary tab) */}
+      {filter !== "summary" && (
+        <div className={`flex-1 overflow-y-auto px-4 py-4 ${selected.size > 0 ? "pb-24" : "pb-20"} md:pb-4`}>
+          {loading && (
+            <p className="text-sm text-gray-400 text-center pt-8">Loading...</p>
+          )}
+          {error && (
+            <p className="text-sm text-red-500 text-center pt-8">{error}</p>
+          )}
+          {!loading && !error && result.length === 0 && (
+            <p className="text-sm text-gray-400 text-center pt-8">No entries.</p>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {result.map((entry) => (
+              <EntryCard
+                key={entry.id}
+                entry={entry}
+                onArchive={isArchivedView ? null : handleArchive}
+                onUnarchive={isArchivedView ? handleUnarchive : null}
+                onDelete={handleDelete}
+                selected={selected.has(entry.id)}
+                onSelect={toggleSelect}
+                wasCopied={copiedIds.has(entry.id)}
+                onMarkCopied={markCopied}
+                onUpdateEntry={handleUpdateEntry}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Floating action bar */}
       {selected.size > 0 && (
