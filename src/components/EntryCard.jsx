@@ -49,8 +49,32 @@ function safeStr(val) {
   return String(val);
 }
 
+const BRIEF_PROMPT = `Analyze this video breakdown with an unbiased, critical eye. Before any recommendations: Is this tactic actually proven or is it the creator's opinion? What's missing from this advice? Who does this NOT work for? What would have to be true for this to work? Then: what's actually useful here and what's the one literal next step?`;
+
+function formatCardText(entry, { steps, tasks, concepts, warnings, tools, tags, brandRelevance }) {
+  const lines = [];
+  lines.push(entry.title || "Untitled");
+  if (entry.platform) lines.push(`Platform: ${entry.platform}`);
+  if (entry.suggested_topic) lines.push(`Topic: ${entry.suggested_topic}`);
+  if (entry.suggested_subtopic) lines.push(`Subtopic: ${entry.suggested_subtopic}`);
+  if (entry.difficulty) lines.push(`Difficulty: ${entry.difficulty}`);
+  if (entry.content_type) lines.push(`Content type: ${entry.content_type}`);
+  if (entry.time_to_implement) lines.push(`Time to implement: ${entry.time_to_implement}`);
+  if (brandRelevance.length > 0) lines.push(`Brand relevance: ${brandRelevance.join(", ")}`);
+  if (entry.summary) { lines.push(""); lines.push(entry.summary); }
+  if (entry.one_thing_to_steal) { lines.push(""); lines.push(`Key Takeaway: ${entry.one_thing_to_steal}`); }
+  if (steps.length > 0) { lines.push(""); lines.push("Steps:"); steps.forEach((s, i) => lines.push(`${i + 1}. ${safeStr(s)}`)); }
+  if (tasks.length > 0) { lines.push(""); lines.push("Tasks:"); tasks.forEach((t) => lines.push(`• ${safeStr(t)}`)); }
+  if (concepts.length > 0) { lines.push(""); lines.push("Key Concepts:"); concepts.forEach((c) => lines.push(`- ${safeStr(c)}`)); }
+  if (warnings.length > 0) { lines.push(""); lines.push("Warnings:"); warnings.forEach((w) => lines.push(`⚠ ${safeStr(w)}`)); }
+  if (tools.length > 0) { lines.push(""); lines.push(`Tools: ${tools.map(safeStr).join(", ")}`); }
+  if (tags.length > 0) { lines.push(""); lines.push(`Tags: ${tags.map(safeStr).join(", ")}`); }
+  return lines.join("\n");
+}
+
 export default function EntryCard({ entry, onArchive }) {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(null); // "copy" | "brief" | null
 
   const steps = Array.isArray(entry.steps) ? entry.steps : [];
   const tasks = Array.isArray(entry.tasks) ? entry.tasks : [];
@@ -59,6 +83,14 @@ export default function EntryCard({ entry, onArchive }) {
   const warnings = Array.isArray(entry.warnings) ? entry.warnings : [];
   const tags = Array.isArray(entry.tags) ? entry.tags : [];
   const brandRelevance = Array.isArray(entry.brand_relevance) ? entry.brand_relevance : [];
+
+  const handleCopy = (withBrief) => {
+    const text = formatCardText(entry, { steps, tasks, concepts, warnings, tools, tags, brandRelevance });
+    const content = withBrief ? `${BRIEF_PROMPT}\n\n---\n\n${text}` : text;
+    navigator.clipboard.writeText(content);
+    setCopied(withBrief ? "brief" : "copy");
+    setTimeout(() => setCopied(null), 2000);
+  };
 
   return (
     <div
@@ -201,6 +233,22 @@ export default function EntryCard({ entry, onArchive }) {
               </div>
             </section>
           )}
+
+          {/* Copy buttons */}
+          <div className="flex gap-2 border-t border-gray-100 pt-3">
+            <button
+              onClick={() => handleCopy(false)}
+              className="text-xs font-medium px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+            >
+              {copied === "copy" ? "✓ Copied" : "Copy"}
+            </button>
+            <button
+              onClick={() => handleCopy(true)}
+              className="text-xs font-medium px-3 py-1.5 rounded-md bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+            >
+              {copied === "brief" ? "✓ Copied" : "Copy + Brief"}
+            </button>
+          </div>
 
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pt-1">
