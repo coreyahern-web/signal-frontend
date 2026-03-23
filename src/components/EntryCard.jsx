@@ -27,9 +27,10 @@ function copyPlain(entry) {
   navigator.clipboard.writeText(text);
 }
 
-function copyForClaude(entry) {
-  const lines = [
-    "[VIDEO BREAKDOWN CARD]",
+export function buildClaudeBlock(entry, index) {
+  const label = index != null ? "[VIDEO BREAKDOWN CARD " + (index + 1) + "]" : "[VIDEO BREAKDOWN CARD]";
+  return [
+    label,
     "Title: " + (entry.title || ""),
     "Summary: " + (entry.summary || ""),
     "Verdict: " + (entry.verdict || ""),
@@ -39,8 +40,11 @@ function copyForClaude(entry) {
     "Recommend: " + (entry.recommend || ""),
     "Relevancy: " + (entry.relevancy_score || 0) + "/10 | Confidence: " + (entry.confidence || ""),
     "Already doing: " + (entry.already_doing || ""),
-  ];
-  navigator.clipboard.writeText(lines.join("\n"));
+  ].join("\n");
+}
+
+function copyForClaude(entry) {
+  navigator.clipboard.writeText(buildClaudeBlock(entry));
 }
 
 function formatList(val) {
@@ -258,7 +262,7 @@ function DetailDrawer({ entry, onClose }) {
   );
 }
 
-export default function EntryCard({ entry, onArchive, onUnarchive, onDelete }) {
+export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, selected, onSelect }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [copied, setCopied] = useState(null);
 
@@ -270,6 +274,11 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete }) {
     else copyForClaude(entry);
     setCopied(type);
     setTimeout(() => setCopied(null), 1500);
+  }
+
+  function handleCheck(e) {
+    e.stopPropagation();
+    if (onSelect) onSelect(entry.id);
   }
 
   function handleArchive(e) {
@@ -291,13 +300,27 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete }) {
   return (
     <>
       <div
-        className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden cursor-pointer hover:border-gray-300 transition-colors p-4"
+        className={`bg-white border rounded-xl shadow-sm overflow-hidden cursor-pointer hover:border-gray-300 transition-colors p-4 ${selected ? "border-gray-900 ring-1 ring-gray-900" : "border-gray-200"}`}
         onClick={() => setDrawerOpen(true)}
       >
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="text-sm font-semibold text-gray-900 leading-snug flex-1">
-            {entry.title || "Untitled"}
-          </h3>
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <div
+              onClick={handleCheck}
+              className={`mt-0.5 w-4 h-4 flex-shrink-0 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                selected ? "bg-gray-900 border-gray-900" : "border-gray-300 hover:border-gray-500"
+              }`}
+            >
+              {selected && (
+                <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900 leading-snug flex-1">
+              {entry.title || "Untitled"}
+            </h3>
+          </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {entry.relevancy_score != null && (
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${relevancyColor(entry.relevancy_score)}`}>

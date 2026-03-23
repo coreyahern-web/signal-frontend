@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import EntryCard from "./EntryCard";
+import EntryCard, { buildClaudeBlock } from "./EntryCard";
 
 function searchText(val) {
   if (!val) return "";
@@ -16,6 +16,8 @@ export default function Feed() {
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("newest");
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(new Set());
+  const [batchCopied, setBatchCopied] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -71,23 +73,43 @@ export default function Feed() {
 
   async function handleArchive(id) {
     setEntries((prev) => prev.filter((e) => e.id !== id));
+    setSelected((prev) => { const next = new Set(prev); next.delete(id); return next; });
     await supabase.from("knowledge_entries").update({ archived: true }).eq("id", id);
   }
 
   async function handleUnarchive(id) {
     setEntries((prev) => prev.filter((e) => e.id !== id));
+    setSelected((prev) => { const next = new Set(prev); next.delete(id); return next; });
     await supabase.from("knowledge_entries").update({ archived: false }).eq("id", id);
   }
 
   async function handleDelete(id) {
     setEntries((prev) => prev.filter((e) => e.id !== id));
+    setSelected((prev) => { const next = new Set(prev); next.delete(id); return next; });
     await supabase.from("knowledge_entries").delete().eq("id", id);
+  }
+
+  function toggleSelect(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function copySelectedForClaude() {
+    const selectedEntries = result.filter((e) => selected.has(e.id));
+    const blocks = selectedEntries.map((e, i) => buildClaudeBlock(e, i));
+    navigator.clipboard.writeText(blocks.join("\n\n"));
+    setBatchCopied(true);
+    setTimeout(() => setBatchCopied(false), 1500);
   }
 
   const isArchivedView = filter === "archived";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* Filter tabs */}
       <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide border-b border-gray-100 flex-shrink-0">
         {[
@@ -130,7 +152,7 @@ export default function Feed() {
         </select>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 md:pb-4">
+      <div className={`flex-1 overflow-y-auto px-4 py-4 ${selected.size > 0 ? "pb-24" : "pb-20"} md:pb-4`}>
         {loading && (
           <p className="text-sm text-gray-400 text-center pt-8">Loading...</p>
         )}
@@ -148,10 +170,36 @@ export default function Feed() {
               onArchive={isArchivedView ? null : handleArchive}
               onUnarchive={isArchivedView ? handleUnarchive : null}
               onDelete={handleDelete}
+              selected={selected.has(entry.id)}
+              onSelect={toggleSelect}
             />
           ))}
         </div>
       </div>
+
+      {/* Floating action bar */}
+      {selected.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center p-3 pointer-events-none md:bottom-4">
+          <div className="pointer-events-auto flex items-center gap-3 bg-gray-900 text-white rounded-xl shadow-lg px-5 py-3">
+            <span className="text-sm font-medium">
+              {selected.size} card{selected.size > 1 ? "s" : ""} selected
+            </span>
+            <div className="w-px h-4 bg-gray-700" />
+            <button
+              onClick={copySelectedForClaude}
+              className="text-sm font-medium px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              {batchCopied ? "Copied" : "Copy for Claude"}
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-sm font-medium px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
