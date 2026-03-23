@@ -9,6 +9,25 @@ function searchText(val) {
   return "";
 }
 
+const STATUS_OPTIONS = [
+  { key: null, label: "All statuses" },
+  { key: "unreviewed", label: "Unreviewed" },
+  { key: "act", label: "Act" },
+  { key: "queue", label: "Queue" },
+  { key: "save", label: "Save" },
+  { key: "discard", label: "Discard" },
+];
+
+const TYPE_OPTIONS = [
+  { key: null, label: "All types" },
+  { key: "build", label: "Build" },
+  { key: "configure", label: "Configure" },
+  { key: "ops", label: "Ops" },
+  { key: "marketing", label: "Marketing" },
+  { key: "strategy", label: "Strategy" },
+  { key: "vendor", label: "Vendor" },
+];
+
 export default function Feed() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +38,8 @@ export default function Feed() {
   const [selected, setSelected] = useState(new Set());
   const [batchCopied, setBatchCopied] = useState(false);
   const [copiedIds, setCopiedIds] = useState(new Set());
+  const [statusFilter, setStatusFilter] = useState(null);
+  const [typeFilter, setTypeFilter] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -49,6 +70,18 @@ export default function Feed() {
         : filter === "high-relevancy"
           ? entries.filter((e) => Number(e.relevancy_score) >= 7)
           : entries;
+
+  // Filter by upgrade_status
+  if (statusFilter === "unreviewed") {
+    result = result.filter((e) => !e.upgrade_status);
+  } else if (statusFilter) {
+    result = result.filter((e) => e.upgrade_status === statusFilter);
+  }
+
+  // Filter by upgrade_type
+  if (typeFilter) {
+    result = result.filter((e) => e.upgrade_type === typeFilter);
+  }
 
   // Search
   if (search.trim()) {
@@ -88,6 +121,11 @@ export default function Feed() {
     setEntries((prev) => prev.filter((e) => e.id !== id));
     setSelected((prev) => { const next = new Set(prev); next.delete(id); return next; });
     await supabase.from("knowledge_entries").delete().eq("id", id);
+  }
+
+  async function handleUpdateEntry(id, fields) {
+    setEntries((prev) => prev.map((e) => e.id === id ? { ...e, ...fields } : e));
+    await supabase.from("knowledge_entries").update(fields).eq("id", id);
   }
 
   function toggleSelect(id) {
@@ -142,15 +180,33 @@ export default function Feed() {
         ))}
       </div>
 
-      {/* Search + sort row */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 flex-shrink-0">
+      {/* Search + sort + upgrade filters */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 flex-shrink-0 flex-wrap">
         <input
           type="text"
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 text-sm px-3 py-1.5 rounded-lg bg-gray-100 border-0 outline-none focus:ring-2 focus:ring-gray-900 placeholder-gray-400"
+          className="flex-1 min-w-[120px] text-sm px-3 py-1.5 rounded-lg bg-gray-100 border-0 outline-none focus:ring-2 focus:ring-gray-900 placeholder-gray-400"
         />
+        <select
+          value={statusFilter || ""}
+          onChange={(e) => setStatusFilter(e.target.value || null)}
+          className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 border-0 outline-none cursor-pointer"
+        >
+          {STATUS_OPTIONS.map((o) => (
+            <option key={o.key || "all"} value={o.key || ""}>{o.label}</option>
+          ))}
+        </select>
+        <select
+          value={typeFilter || ""}
+          onChange={(e) => setTypeFilter(e.target.value || null)}
+          className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 border-0 outline-none cursor-pointer"
+        >
+          {TYPE_OPTIONS.map((o) => (
+            <option key={o.key || "all"} value={o.key || ""}>{o.label}</option>
+          ))}
+        </select>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
@@ -184,6 +240,7 @@ export default function Feed() {
               onSelect={toggleSelect}
               wasCopied={copiedIds.has(entry.id)}
               onMarkCopied={markCopied}
+              onUpdateEntry={handleUpdateEntry}
             />
           ))}
         </div>

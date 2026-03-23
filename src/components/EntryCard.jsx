@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "../lib/supabase";
 
 const platformColors = {
   instagram: "bg-pink-100 text-pink-700",
@@ -8,6 +9,25 @@ const platformColors = {
   x: "bg-sky-100 text-sky-700",
   default: "bg-gray-100 text-gray-700",
 };
+
+const statusColors = {
+  act: "bg-blue-100 text-blue-700",
+  queue: "bg-violet-100 text-violet-700",
+  save: "bg-amber-100 text-amber-700",
+  discard: "bg-gray-200 text-gray-500",
+};
+
+const typeColors = {
+  build: "bg-blue-50 text-blue-600",
+  configure: "bg-cyan-50 text-cyan-600",
+  ops: "bg-gray-100 text-gray-600",
+  marketing: "bg-pink-50 text-pink-600",
+  strategy: "bg-indigo-50 text-indigo-600",
+  vendor: "bg-orange-50 text-orange-600",
+};
+
+const STATUSES = ["act", "queue", "save", "discard"];
+const TYPES = ["build", "configure", "ops", "marketing", "strategy", "vendor"];
 
 function relevancyColor(score) {
   const n = Number(score) || 0;
@@ -40,7 +60,11 @@ export function buildClaudeBlock(entry, index) {
     "Recommend: " + (entry.recommend || ""),
     "Relevancy: " + (entry.relevancy_score || 0) + "/10 | Confidence: " + (entry.confidence || ""),
     "Already doing: " + (entry.already_doing || ""),
-  ].join("\n");
+    entry.upgrade_status ? "Status: " + entry.upgrade_status : "",
+    entry.upgrade_type ? "Type: " + entry.upgrade_type : "",
+    entry.upgrade_notes ? "Notes: " + entry.upgrade_notes : "",
+    entry.brief_ref ? "Brief ref: " + entry.brief_ref : "",
+  ].filter(Boolean).join("\n");
 }
 
 function copyForClaude(entry) {
@@ -82,7 +106,89 @@ function Section({ label, children }) {
   );
 }
 
-function DetailDrawer({ entry, onClose }) {
+function StatusPicker({ value, onChange }) {
+  return (
+    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+      {STATUSES.map((s) => (
+        <button
+          key={s}
+          onClick={() => onChange(s === value ? null : s)}
+          className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
+            s === value ? statusColors[s] + " ring-1 ring-current" : "bg-gray-50 text-gray-400 hover:bg-gray-100"
+          }`}
+        >
+          {s}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TypePicker({ value, onChange }) {
+  return (
+    <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+      {TYPES.map((t) => (
+        <button
+          key={t}
+          onClick={() => onChange(t === value ? null : t)}
+          className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
+            t === value ? typeColors[t] + " ring-1 ring-current" : "bg-gray-50 text-gray-400 hover:bg-gray-100"
+          }`}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function InlineField({ label, value, placeholder, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+
+  function handleBlur() {
+    setEditing(false);
+    if (draft !== (value || "")) onSave(draft || null);
+  }
+
+  if (!editing && !value) {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        + {label}
+      </button>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div onClick={(e) => e.stopPropagation()}>
+        <textarea
+          autoFocus
+          rows={2}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          className="w-full text-xs px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-200 outline-none focus:border-gray-400 resize-none"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <p
+      onClick={(e) => { e.stopPropagation(); setDraft(value || ""); setEditing(true); }}
+      className="text-xs text-gray-600 cursor-text hover:bg-gray-50 rounded px-1 py-0.5 -mx-1 transition-colors"
+    >
+      {value}
+    </p>
+  );
+}
+
+function DetailDrawer({ entry, onClose, onUpdateEntry }) {
   const whatWorks = parseArray(entry.what_works);
   const whatDoesnt = parseArray(entry.what_doesnt);
   const prerequisites = parseArray(entry.prerequisites);
@@ -103,6 +209,14 @@ function DetailDrawer({ entry, onClose }) {
               {entry.title || "Untitled"}
             </h2>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${entry.upgrade_status ? statusColors[entry.upgrade_status] : "bg-gray-100 text-gray-500"}`}>
+                {entry.upgrade_status || "Unreviewed"}
+              </span>
+              {entry.upgrade_type && (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeColors[entry.upgrade_type] || "bg-gray-100 text-gray-600"}`}>
+                  {entry.upgrade_type}
+                </span>
+              )}
               {entry.recommend && (
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${recommendColor(entry.recommend)}`}>
                   {entry.recommend}
@@ -129,6 +243,18 @@ function DetailDrawer({ entry, onClose }) {
         </div>
 
         <div className="px-5 pb-8 divide-y divide-gray-100">
+          {/* Upgrade controls */}
+          <div className="py-3 space-y-2">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Status</h4>
+            <StatusPicker value={entry.upgrade_status} onChange={(v) => onUpdateEntry(entry.id, { upgrade_status: v })} />
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-2">Type</h4>
+            <TypePicker value={entry.upgrade_type} onChange={(v) => onUpdateEntry(entry.id, { upgrade_type: v })} />
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-2">Notes</h4>
+            <InlineField label="Add notes" value={entry.upgrade_notes} placeholder="Notes..." onSave={(v) => onUpdateEntry(entry.id, { upgrade_notes: v })} />
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-2">Brief ref</h4>
+            <InlineField label="Add brief ref" value={entry.brief_ref} placeholder="Brief reference or URL..." onSave={(v) => onUpdateEntry(entry.id, { brief_ref: v })} />
+          </div>
+
           <Section label="Summary">
             <p className="text-sm text-gray-700 leading-relaxed">{entry.summary}</p>
           </Section>
@@ -262,7 +388,7 @@ function DetailDrawer({ entry, onClose }) {
   );
 }
 
-export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, selected, onSelect, wasCopied, onMarkCopied }) {
+export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, selected, onSelect, wasCopied, onMarkCopied, onUpdateEntry }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [copied, setCopied] = useState(null);
 
@@ -328,6 +454,9 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, sel
                 Copied
               </span>
             )}
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${entry.upgrade_status ? statusColors[entry.upgrade_status] : "bg-gray-100 text-gray-500"}`}>
+              {entry.upgrade_status || "Unreviewed"}
+            </span>
             {entry.relevancy_score != null && (
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${relevancyColor(entry.relevancy_score)}`}>
                 {entry.relevancy_score}
@@ -340,6 +469,15 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, sel
             )}
           </div>
         </div>
+
+        {/* Type tag */}
+        {entry.upgrade_type && (
+          <div className="mb-2">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeColors[entry.upgrade_type] || "bg-gray-100 text-gray-600"}`}>
+              {entry.upgrade_type}
+            </span>
+          </div>
+        )}
 
         <p className="text-sm text-gray-600 leading-relaxed line-clamp-1 mb-3">
           {entry.summary}
@@ -392,7 +530,7 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, sel
       </div>
 
       {drawerOpen && (
-        <DetailDrawer entry={entry} onClose={() => setDrawerOpen(false)} />
+        <DetailDrawer entry={entry} onClose={() => setDrawerOpen(false)} onUpdateEntry={onUpdateEntry} />
       )}
     </>
   );
