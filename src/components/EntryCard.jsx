@@ -71,6 +71,16 @@ function copyForClaude(entry) {
   navigator.clipboard.writeText(buildClaudeBlock(entry));
 }
 
+const BRIEF_PROMPT = "You are an unbiased skeptic. For this content, first determine: is this proven or opinion? What's missing? Who does this NOT work for? What must be true for this to work? Then extract what's genuinely useful and give me one literal next step I can take today for Cold Holdings.";
+
+export function buildBriefBlock(entry, index) {
+  return BRIEF_PROMPT + "\n\n" + buildClaudeBlock(entry, index);
+}
+
+function copyBrief(entry) {
+  navigator.clipboard.writeText(buildBriefBlock(entry));
+}
+
 function formatList(val) {
   if (Array.isArray(val)) return val.join("; ");
   if (typeof val === "string" && val) {
@@ -397,6 +407,7 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, sel
   function handleCopy(type, e) {
     e.stopPropagation();
     if (type === "plain") copyPlain(entry);
+    else if (type === "brief") copyBrief(entry);
     else copyForClaude(entry);
     if (onMarkCopied) onMarkCopied(entry.id);
     setCopied(type);
@@ -502,6 +513,12 @@ export default function EntryCard({ entry, onArchive, onUnarchive, onDelete, sel
               className="text-xs text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors"
             >
               {copied === "claude" ? "Copied" : "Copy for Claude"}
+            </button>
+            <button
+              onClick={(e) => handleCopy("brief", e)}
+              className="text-xs text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors"
+            >
+              {copied === "brief" ? "Copied" : "Copy + Brief"}
             </button>
             {onArchive && (
               <button

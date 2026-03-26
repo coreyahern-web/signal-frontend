@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import EntryCard, { buildClaudeBlock } from "./EntryCard";
+import EntryCard, { buildClaudeBlock, buildBriefBlock } from "./EntryCard";
 
 function searchText(val) {
   if (!val) return "";
@@ -182,6 +182,21 @@ export default function Feed() {
     });
     setBatchCopied(true);
     setTimeout(() => setBatchCopied(false), 1500);
+  }
+
+  const [batchBriefCopied, setBatchBriefCopied] = useState(false);
+
+  function copySelectedBrief() {
+    const selectedEntries = result.filter((e) => selected.has(e.id));
+    const blocks = selectedEntries.map((e, i) => buildBriefBlock(e, i));
+    navigator.clipboard.writeText(blocks.join("\n\n"));
+    setCopiedIds((prev) => {
+      const next = new Set(prev);
+      selectedEntries.forEach((e) => next.add(e.id));
+      return next;
+    });
+    setBatchBriefCopied(true);
+    setTimeout(() => setBatchBriefCopied(false), 1500);
   }
 
   function markCopied(id) {
@@ -432,6 +447,12 @@ export default function Feed() {
               className="text-sm font-medium px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
             >
               {batchCopied ? "Copied" : "Copy"}
+            </button>
+            <button
+              onClick={copySelectedBrief}
+              className="text-sm font-medium px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              {batchBriefCopied ? "Copied" : "Copy + Brief"}
             </button>
             <button
               onClick={() => setSelected(new Set())}
