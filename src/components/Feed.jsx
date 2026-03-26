@@ -188,7 +188,32 @@ export default function Feed() {
     setCopiedIds((prev) => new Set(prev).add(id));
   }
 
+  async function handleBulkArchive() {
+    const ids = [...selected];
+    setEntries((prev) => prev.filter((e) => !selected.has(e.id)));
+    setSelected(new Set());
+    await supabase.from("knowledge_entries").update({ archived: true }).in("id", ids);
+  }
+
+  async function handleBulkStatus(status) {
+    const ids = [...selected];
+    setEntries((prev) => prev.map((e) => ids.includes(e.id) ? { ...e, upgrade_status: status } : e));
+    setSelected(new Set());
+    await supabase.from("knowledge_entries").update({ upgrade_status: status }).in("id", ids);
+  }
+
+  function toggleSelectAll() {
+    const visibleIds = result.map((e) => e.id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(visibleIds));
+    }
+  }
+
   const isArchivedView = filter === "archived";
+  const allVisibleSelected = result.length > 0 && result.every((e) => selected.has(e.id));
 
   return (
     <div className="flex flex-col h-full relative">
@@ -333,6 +358,25 @@ export default function Feed() {
           {!loading && !error && result.length === 0 && (
             <p className="text-sm text-gray-400 text-center pt-8">No entries.</p>
           )}
+          {result.length > 0 && (
+            <div className="flex items-center gap-2 mb-3">
+              <div
+                onClick={toggleSelectAll}
+                className={`w-4 h-4 flex-shrink-0 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                  allVisibleSelected ? "bg-gray-900 border-gray-900" : "border-gray-300 hover:border-gray-500"
+                }`}
+              >
+                {allVisibleSelected && (
+                  <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-xs text-gray-500">
+                {selected.size > 0 ? `${selected.size} of ${result.length} selected` : `Select all ${result.length}`}
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {result.map((entry) => (
               <EntryCard
@@ -355,22 +399,45 @@ export default function Feed() {
       {/* Floating action bar */}
       {selected.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center p-3 pointer-events-none md:bottom-4">
-          <div className="pointer-events-auto flex items-center gap-3 bg-gray-900 text-white rounded-xl shadow-lg px-5 py-3">
-            <span className="text-sm font-medium">
-              {selected.size} card{selected.size > 1 ? "s" : ""} selected
+          <div className="pointer-events-auto flex items-center gap-2 bg-gray-900 text-white rounded-xl shadow-lg px-4 py-2.5 flex-wrap justify-center">
+            <span className="text-sm font-medium mr-1">
+              {selected.size} card{selected.size > 1 ? "s" : ""}
             </span>
+            <div className="w-px h-4 bg-gray-700" />
+            {!isArchivedView && (
+              <button
+                onClick={handleBulkArchive}
+                className="text-sm font-medium px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors"
+              >
+                Archive
+              </button>
+            )}
+            {[
+              { key: "act", label: "Act", cls: "bg-blue-500/20 text-blue-300 hover:bg-blue-500/30" },
+              { key: "queue", label: "Queue", cls: "bg-violet-500/20 text-violet-300 hover:bg-violet-500/30" },
+              { key: "save", label: "Save", cls: "bg-amber-500/20 text-amber-300 hover:bg-amber-500/30" },
+              { key: "discard", label: "Discard", cls: "bg-gray-500/20 text-gray-300 hover:bg-gray-500/30" },
+            ].map((s) => (
+              <button
+                key={s.key}
+                onClick={() => handleBulkStatus(s.key)}
+                className={`text-sm font-medium px-3 py-1 rounded-lg transition-colors ${s.cls}`}
+              >
+                {s.label}
+              </button>
+            ))}
             <div className="w-px h-4 bg-gray-700" />
             <button
               onClick={copySelectedForClaude}
               className="text-sm font-medium px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
             >
-              {batchCopied ? "Copied" : "Copy for Claude"}
+              {batchCopied ? "Copied" : "Copy"}
             </button>
             <button
               onClick={() => setSelected(new Set())}
-              className="text-sm font-medium px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+              className="text-sm font-medium px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
             >
-              Clear
+              ✕
             </button>
           </div>
         </div>
