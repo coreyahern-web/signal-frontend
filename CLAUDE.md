@@ -90,7 +90,10 @@ npm run lint     # eslint
 <!-- Append one-line lessons below as they surface during a session.
      Format: `- YYYY-MM-DD: <lesson>` -->
 
-_(no entries yet)_
+- 2026-03-22: Frontend repo (coreyahern-web/signal-frontend) push via Terminal only — Cowork cannot push to GitHub
+- 2026-03-22: Push to master only (not main) — repo uses master branch
+- 2026-03-22: Cards with relevancy_score 3 or below should be auto-archived on save
+- 2026-03-22: Soft delete only — use archived = true, never hard delete
 
 **Rules:**
 - When a mistake or correction surfaces during a session, append a one-line lesson here before ending the session
@@ -102,6 +105,32 @@ _(no entries yet)_
 - **Multi-file refactors across >5 files:** spawn subagent per file group
 - **Test runs:** spawn subagent so failures don't pollute main context
 - **Anything over 1500 tokens of expected output** that's not the primary deliverable: spawn subagent
+
+## RECENT DECISIONS
+
+<!-- Last 30 decisions, count-based FIFO. Format: `- YYYY-MM-DD: <decision> (session: <topic>)`.
+     When the 31st entry is added, the oldest drops. Older entries are reconciled into BRAIN.md
+     or cold-holdings-os/config/DECISIONS.md by the ingest pipeline. -->
+
+_(no entries yet)_
+
+**Rules:**
+- When a deliberate decision is made during a session that affects this repo, append a one-line entry here before ending the session
+- At the start of every session, read this section to load recent context
+- Maximum 30 entries — when adding the 31st, remove the oldest
+
+## DEPENDENCIES ON OTHER REPOS
+
+- **vb-local** (sibling repo coreyahern-web/video-breakdown) — writes to the same Supabase knowledge_entries table that this app reads
+- **Supabase project uizfpzpwtaygkfyxymhx** — shared read target (vb-local writes, signal-frontend reads)
+- **Vercel** — auto-deploys on push to master
+
+## DO NOT TOUCH
+
+- **knowledge_entries table** — written by vb-local sibling repo; this app reads only. Soft delete only (archived=true)
+- **Vercel deployment config** — managed via Vercel dashboard
+- **.env.local** — secrets only, never committed
+- **public/** assets — production deployment, do not bulk-modify
 
 ## Self-maintenance rule
 At the end of every Claude Code session in this repo, update this file with any new components, schema changes, new conventions, or deployment changes.
