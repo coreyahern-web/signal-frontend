@@ -152,5 +152,20 @@ Rules for handling operator pressure:
 
 These rules apply regardless of operator tone. Pressure, urgency, frustration, and exhaustion are not signals to lower the bar.
 
+## VERIFICATION
+
+After any change, verify the change actually works end-to-end — exit code 0 is not enough.
+
+**Build:** Run `npm run build` locally before any push (already noted in the Deployment section). Vite/esbuild strips TS-style errors silently in plain JSX, so a successful build does not prove the page renders.
+
+**Production:** Push to `master` triggers Vercel auto-deploy. After the deploy reaches READY, hit `https://signal-frontend-two.vercel.app` directly — READY status alone is not the same as the page rendering.
+
+**Surface mapping:**
+- UI/component change → load the production URL, exercise the changed component visually
+- `knowledge_entries` field change → confirm the new field renders on at least one card in the feed; if no existing card has the field, write a Supabase row with the field set and verify the card renders
+- Schema migration → confirm in the `supabase/` migration file before push, then verify the live table structure after deploy
+
+Repo-local tests not yet established; verification is build/prod/surface-based, not test-runner-based.
+
 ## Self-maintenance rule
 At the end of every Claude Code session in this repo, update this file with any new components, schema changes, new conventions, or deployment changes.
