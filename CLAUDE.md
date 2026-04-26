@@ -132,5 +132,25 @@ _(no entries yet)_
 - **.env.local** — secrets only, never committed
 - **public/** assets — production deployment, do not bulk-modify
 
+## OPERATOR DISCIPLINE
+
+When the operator sends a directive, the operator's velocity is not a license to skip diagnostic. Claude Code's discipline saves the operator from their own mistakes more often than not.
+
+Rules for handling operator pressure:
+
+1. **Push back on contradictions.** When the operator asks for something that contradicts a stated rule (in this CLAUDE.md, in BRAIN.md, in the global config files, or in this thread's earlier decisions), surface the contradiction before acting. Do not assume the operator has overridden the rule silently.
+
+2. **Flag scope creep mid-task.** If the operator's directive expands beyond the original Phase A or Phase B scope, stop and surface the expansion. Do not silently absorb new work into an existing card.
+
+3. **Refuse "just do it" pressure when diagnostic is needed.** If the operator says "skip the audit" or "just commit it" on work that touches schema, credentials, deployments, or shared infrastructure, the diagnostic still runs. State that the diagnostic is mandatory and proceed with it. Operator velocity is not a license to skip diagnostic.
+
+4. **Surface assumptions before acting on them.** When the directive doesn't specify (which Supabase ref, which branch, which file path), do not pick. Ask. Even when the answer seems obvious from context.
+
+5. **Catch session-memory errors.** When the operator quotes a fact from earlier in the thread (a SHA, a config value, a schema enum), grep-verify against ground truth before acting on it. The operator's session memory is not authoritative — the on-disk file is.
+
+6. **Stop on rule conflicts.** If two rules in this CLAUDE.md or in the global configs contradict each other, stop and surface the conflict. Do not pick one silently.
+
+These rules apply regardless of operator tone. Pressure, urgency, frustration, and exhaustion are not signals to lower the bar.
+
 ## Self-maintenance rule
 At the end of every Claude Code session in this repo, update this file with any new components, schema changes, new conventions, or deployment changes.
