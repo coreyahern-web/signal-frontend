@@ -78,5 +78,30 @@ npm run lint     # eslint
 - Sibling repo: `coreyahern-web/video-breakdown` — bot that writes to the same Supabase table
 - `supabase/` migrations — schema source of truth
 
+## WORKTREE WORKFLOW
+
+- **Spin up:** `git worktree add ~/cold-worktrees/[repo]-[task-slug] [branch]`
+- **Tear down:** `git worktree remove ~/cold-worktrees/[repo]-[task-slug]`
+- **One worktree per active task**, named by task slug (e.g. `permit-scraper-fix`, `holdings-rls-migration`)
+- **Never run more than 3 parallel Claude Code sessions on the same Mac mini**
+
+## SELF-IMPROVEMENT LOG
+
+<!-- Append one-line lessons below as they surface during a session.
+     Format: `- YYYY-MM-DD: <lesson>` -->
+
+_(no entries yet)_
+
+**Rules:**
+- When a mistake or correction surfaces during a session, append a one-line lesson here before ending the session
+- At the start of every session, read this section first
+
+## SUBAGENT DELEGATION
+
+- **Long log searches (>200 lines):** spawn subagent
+- **Multi-file refactors across >5 files:** spawn subagent per file group
+- **Test runs:** spawn subagent so failures don't pollute main context
+- **Anything over 1500 tokens of expected output** that's not the primary deliverable: spawn subagent
+
 ## Self-maintenance rule
 At the end of every Claude Code session in this repo, update this file with any new components, schema changes, new conventions, or deployment changes.
