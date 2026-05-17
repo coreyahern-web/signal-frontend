@@ -38,7 +38,7 @@ CLAUDE.md              # This file
 ```
 
 ### Supabase
-- Project ID: `uizfpzpwtaygkfyxymhx` (shared with vb-local; this app reads, vb-local writes)
+- Project ID: `uietlsvrywmcmcuqwspi` (shared with vb-local; this app reads, vb-local writes — corrected 2026-05-16; prior `uizfpzpwtaygkfyxymhx` was estimate-pm's ref, not Video Breakdown's. Canonical source: `cold-holdings-os/config/products/video-breakdown/BRAIN.md` line 131 — see PR #314.)
 - Table: `knowledge_entries` — primary data table
 - RLS: disabled on `knowledge_entries` (intentional)
 - Key columns: `id`, `url`, `platform`, `title`, `summary`, `transcript`, `prerequisites`, `warnings`, `source`, `brand_relevance`, `difficulty`, `time_to_implement`, `content_type`, `transcript_failed`, `archived`, `verdict`, `what_works`, `what_doesnt`, `who_it_works_for`, `next_step`, `already_doing`, `recommend`, `relevancy_score`, `confidence`, `tools`, `upgrade_status`, `upgrade_type`, `upgrade_notes`, `brief_ref`
@@ -122,7 +122,7 @@ _(no entries yet)_
 ## DEPENDENCIES ON OTHER REPOS
 
 - **vb-local** (sibling repo coreyahern-web/video-breakdown) — writes to the same Supabase knowledge_entries table that this app reads
-- **Supabase project uizfpzpwtaygkfyxymhx** — shared read target (vb-local writes, signal-frontend reads)
+- **Supabase project uietlsvrywmcmcuqwspi** — shared read target (vb-local writes, signal-frontend reads)
 - **Vercel** — auto-deploys on push to master
 
 ## DO NOT TOUCH
